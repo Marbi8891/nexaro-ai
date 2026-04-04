@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexaroAI · Panel Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:      #080B12;
+      --bg2:     #0D1120;
+      --surface: #111827;
+      --border:  rgba(255,255,255,.08);
+      --accent:  #00E5FF;
+      --red:     #FF4B6E;
+      --green:   #00E096;
+      --yellow:  #FFB800;
+      --purple:  #9B79D4;
+      --text:    #F0F4FF;
+      --muted:   #6B7A99;
+      --font-h:  'Syne', sans-serif;
+      --font-b:  'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body { font-family: var(--font-b); background: var(--bg); color: var(--text);
+           min-height: 100vh; display: flex; flex-direction: column;
+           -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; font-family: var(--font-b); }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 48px; width: 100%; max-width: 400px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.5);
+    }
+    .login-logo { font-family: var(--font-h); font-size: 1.5rem; font-weight: 800;
+                  margin-bottom: 6px; }
+    .login-logo span { color: var(--accent); font-style: italic; }
+    .login-sub { color: var(--muted); font-size: .85rem; margin-bottom: 32px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .field label { font-size: .75rem; font-weight: 600; color: var(--muted);
+                   text-transform: uppercase; letter-spacing: .07em; }
+    .field input {
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: .95rem;
+      font-family: var(--font-b); outline: none; transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .btn-login {
+      width: 100%; padding: 13px; background: var(--accent); color: #080B12;
+      border-radius: 8px; font-weight: 700; font-size: .95rem;
+      font-family: var(--font-b); margin-top: 8px;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn-login:hover { opacity: .9; transform: translateY(-1px); }
+    .login-err { color: var(--red); font-size: .8rem; margin-top: 12px;
+                 text-align: center; display: none; }
+
+    /* ── SHELL ── */
+    #app { display: none; flex: 1; }
+
+    /* sidebar */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 0; z-index: 50;
+    }
+    .sidebar-logo { font-family: var(--font-h); font-size: 1.2rem; font-weight: 800;
+                    padding: 0 20px 24px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo span { color: var(--accent); font-style: italic; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 20px; font-size: .88rem; font-weight: 500;
+      color: var(--muted); cursor: pointer; transition: all .2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent);
+                       background: rgba(0,229,255,.05); }
+    .nav-icon { font-size: 1rem; width: 18px; text-align: center; }
+    .sidebar-footer {
+      margin-top: auto; padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-logout {
+      width: 100%; padding: 9px; background: rgba(255,75,110,.1);
+      border: 1px solid rgba(255,75,110,.2); color: var(--red);
+      border-radius: 8px; font-size: .82rem; font-weight: 600;
+    }
+    .btn-logout:hover { background: rgba(255,75,110,.18); }
+
+    /* main */
+    .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-family: var(--font-h); font-size: 1.6rem; font-weight: 800;
+                  letter-spacing: -.02em; margin-bottom: 6px; }
+    .page-sub { color: var(--muted); font-size: .88rem; margin-bottom: 28px; }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+                margin-bottom: 28px; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px;
+    }
+    .kpi-label { font-size: .7rem; font-weight: 600; color: var(--muted);
+                 text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .kpi-val { font-family: var(--font-h); font-size: 2rem; font-weight: 800;
+               letter-spacing: -.03em; line-height: 1; }
+    .kpi-delta { font-size: .75rem; margin-top: 6px; color: var(--green); }
+
+    /* ── TABLE ── */
+    .table-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1; min-width: 200px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 14px; color: var(--text); font-size: .88rem;
+      font-family: var(--font-b); outline: none; transition: border-color .2s;
+    }
+    .search-box:focus { border-color: var(--accent); }
+    .filter-btn {
+      padding: 9px 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--muted); font-size: .82rem; font-weight: 500;
+      transition: all .2s;
+    }
+    .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); }
+    .table-wrap { background: var(--surface); border: 1px solid var(--border);
+                  border-radius: 14px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,.03); }
+    th { padding: 12px 16px; text-align: left; font-size: .7rem; font-weight: 700;
+         color: var(--muted); text-transform: uppercase; letter-spacing: .08em;
+         border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 13px 16px; font-size: .85rem; border-bottom: 1px solid var(--border);
+         vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .lead-name { font-weight: 600; }
+    .lead-email { color: var(--muted); font-size: .78rem; margin-top: 2px; }
+
+    /* status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 100px;
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; white-space: nowrap;
+    }
+    .badge-new      { background: rgba(0,229,255,.1);  color: var(--accent); }
+    .badge-contacted { background: rgba(155,121,212,.12); color: var(--purple); }
+    .badge-qualified { background: rgba(255,184,0,.1);  color: var(--yellow); }
+    .badge-closed   { background: rgba(0,224,150,.1);  color: var(--green); }
+    .badge-lost     { background: rgba(255,75,110,.1); color: var(--red); }
+
+    /* action btn */
+    .btn-sm {
+      padding: 6px 12px; border-radius: 6px; font-size: .78rem; font-weight: 600;
+      background: rgba(0,229,255,.08); border: 1px solid rgba(0,229,255,.15);
+      color: var(--accent); transition: all .2s;
+    }
+    .btn-sm:hover { background: rgba(0,229,255,.16); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 36px; width: 100%; max-width: 500px;
+      transform: translateY(20px); transition: transform .25s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title { font-family: var(--font-h); font-size: 1.2rem; font-weight: 800;
+                   margin-bottom: 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-label { font-size: .72rem; font-weight: 600; color: var(--muted);
+                   text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+    .modal-val { font-size: .9rem; color: var(--text); line-height: 1.6;
+                 background: rgba(255,255,255,.03); border: 1px solid var(--border);
+                 border-radius: 8px; padding: 10px 14px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .modal-close { margin-left: auto; }
+    select.status-sel {
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; color: var(--text);
+      font-size: .9rem; font-family: var(--font-b); outline: none; width: 100%;
+    }
+    textarea.notes-ta {
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; color: var(--text);
+      font-size: .88rem; font-family: var(--font-b); outline: none;
+      width: 100%; min-height: 90px; resize: vertical;
+    }
+    .btn-save {
+      padding: 10px 22px; background: var(--accent); color: #080B12;
+      border-radius: 8px; font-weight: 700; font-size: .88rem;
+    }
+    .btn-cancel {
+      padding: 10px 18px; background: transparent;
+      border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; font-size: .88rem;
+    }
+    .btn-cancel:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+
+    /* ── CHART MINI ── */
+    .chart-wrap { background: var(--surface); border: 1px solid var(--border);
+                  border-radius: 14px; padding: 24px; margin-top: 28px; }
+    .chart-title { font-family: var(--font-h); font-size: .9rem; font-weight: 700;
+                   margin-bottom: 20px; }
+    .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+    .c-bar-wrap { flex: 1; display: flex; flex-direction: column;
+                  align-items: center; gap: 6px; }
+    .c-bar { width: 100%; border-radius: 4px 4px 0 0; background: rgba(0,229,255,.2);
+             transition: height .5s ease; min-height: 4px; }
+    .c-bar.today { background: var(--accent); box-shadow: 0 0 12px rgba(0,229,255,.3); }
+    .c-label { font-size: .62rem; color: var(--muted); white-space: nowrap; }
+    .c-count { font-size: .65rem; color: var(--accent); font-weight: 700; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-icon { font-size: 2rem; margin-bottom: 12px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); font-size: .88rem; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      padding: 12px 20px; border-radius: 10px; font-size: .85rem; font-weight: 600;
+      background: var(--green); color: #080B12;
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s ease; pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.err  { background: var(--red); color: #fff; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:900px) {
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media(max-width:700px) {
+      .sidebar { width: 60px; }
+      .sidebar-logo, .nav-item span, .sidebar-footer { display: none; }
+      .main { margin-left: 60px; padding: 20px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ──────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Nexaro<span>AI</span></div>
+    <div class="login-sub">Panel de administración · Acceso restringido</div>
+    <div class="field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="admin" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()" />
+    </div>
+    <button class="btn-login" onclick="doLogin()">Entrar al panel →</button>
+    <div class="login-err" id="login-err">Credenciales incorrectas</div>
+  </div>
+</div>
+
+<!-- ── APP ────────────────────────────────────────────── -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Nexaro<span>AI</span></div>
+    <nav style="padding-top:16px">
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="showPage('leads')" id="nav-leads">
+        <span class="nav-icon">👥</span><span>Leads</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-sub">Cargando estadísticas...</div>
+
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Total leads</div>
+          <div class="kpi-val" id="kpi-total">—</div></div>
+        <div class="kpi"><div class="kpi-label">Nuevos</div>
+          <div class="kpi-val" id="kpi-new" style="color:var(--accent)">—</div></div>
+        <div class="kpi"><div class="kpi-label">Cerrados</div>
+          <div class="kpi-val" id="kpi-closed" style="color:var(--green)">—</div></div>
+        <div class="kpi"><div class="kpi-label">Conversión</div>
+          <div class="kpi-val" id="kpi-conv">—</div></div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Leads últimos 7 días</div>
+        <div class="chart-bars" id="chart-bars">
+          <div class="loading">Cargando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADS PAGE -->
+    <div class="page" id="page-leads">
+      <div class="page-title">Gestión de leads</div>
+      <div class="page-sub">Todos los contactos captados por NexaroAI</div>
+
+      <div class="table-header">
+        <input class="search-box" type="text" placeholder="Buscar por nombre, email o empresa..."
+               id="search-input" oninput="filterLeads()" />
+        <button class="filter-btn active" onclick="setFilter('', this)">Todos</button>
+        <button class="filter-btn" onclick="setFilter('new', this)">🔵 Nuevos</button>
+        <button class="filter-btn" onclick="setFilter('contacted', this)">🟣 Contactado</button>
+        <button class="filter-btn" onclick="setFilter('qualified', this)">🟡 Calificado</button>
+        <button class="filter-btn" onclick="setFilter('closed', this)">🟢 Cerrado</button>
+        <button class="filter-btn" onclick="setFilter('lost', this)">🔴 Perdido</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Lead</th>
+              <th>Teléfono</th>
+              <th>Empresa</th>
+              <th>Fuente</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <tr><td colspan="7" class="loading">Cargando leads...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── MODAL DETALLE ────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-title" id="modal-name">—</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="modal-field">
+        <div class="modal-label">Email</div>
+        <div class="modal-val" id="modal-email">—</div>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Teléfono</div>
+        <div class="modal-val" id="modal-phone">—</div>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Empresa</div>
+        <div class="modal-val" id="modal-company">—</div>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Fuente</div>
+        <div class="modal-val" id="modal-source">—</div>
+      </div>
+    </div>
+
+    <div class="modal-field" style="margin-top:4px">
+      <div class="modal-label">Mensaje</div>
+      <div class="modal-val" id="modal-message">—</div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Estado</div>
+      <select class="status-sel" id="modal-status">
+        <option value="new">🔵 Nuevo</option>
+        <option value="contacted">🟣 Contactado</option>
+        <option value="qualified">🟡 Calificado</option>
+        <option value="closed">🟢 Cerrado</option>
+        <option value="lost">🔴 Perdido</option>
+      </select>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Notas internas</div>
+      <textarea class="notes-ta" id="modal-notes" placeholder="Añade notas sobre este lead..."></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveLead()">Guardar cambios</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ─────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── SCRIPT ─────────────────────────────────────────── -->
+<script>
+  // ─── CONFIG ───────────────────────────────────────────
+  // Cambia esta URL cuando despliegues el backend en Render/Railway
+  const API = "https://TU-BACKEND.onrender.com";
+
+  let token = localStorage.getItem("nexaro_token") || "";
+  let allLeads = [];
+  let currentFilter = "";
+  let currentLeadId = null;
+
+  // ─── INIT ─────────────────────────────────────────────
+  if (token) initApp();
+
+  // ─── LOGIN ────────────────────────────────────────────
+  async function doLogin() {
+    const username = document.getElementById("login-user").value.trim();
+    const password = document.getElementById("login-pass").value;
+    const err = document.getElementById("login-err");
+    err.style.display = "none";
+
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      token = data.access_token;
+      localStorage.setItem("nexaro_token", token);
+      initApp();
+    } catch {
+      err.style.display = "block";
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("nexaro_token");
+    token = "";
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+  }
+
+  function initApp() {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    loadDashboard();
+    loadLeads();
+  }
+
+  // ─── NAV ──────────────────────────────────────────────
+  function showPage(name) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById(`page-${name}`).classList.add("active");
+    document.getElementById(`nav-${name}`).classList.add("active");
+  }
+
+  // ─── DASHBOARD ────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const res = await apiFetch("/api/stats");
+      const d = await res.json();
+
+      document.getElementById("kpi-total").textContent = d.total;
+      document.getElementById("kpi-new").textContent = d.by_status?.new || 0;
+      document.getElementById("kpi-closed").textContent = d.by_status?.closed || 0;
+      document.getElementById("kpi-conv").textContent = `${d.conversion_rate}%`;
+      document.getElementById("dash-sub").textContent =
+        `${d.total} leads totales · Conversión ${d.conversion_rate}%`;
+
+      renderChart(d.daily_last_7d || []);
+    } catch (e) {
+      document.getElementById("dash-sub").textContent = "Error al cargar estadísticas";
+    }
+  }
+
+  function renderChart(data) {
+    const container = document.getElementById("chart-bars");
+    if (!data.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>Sin datos aún</div>';
+      return;
+    }
+    const max = Math.max(...data.map(d => d.count), 1);
+    const today = new Date().toISOString().split("T")[0];
+    container.innerHTML = data.map(d => {
+      const pct = Math.round((d.count / max) * 100);
+      const label = d.day.slice(5);
+      const isToday = d.day === today;
+      return `
+        <div class="c-bar-wrap">
+          <div class="c-count">${d.count}</div>
+          <div class="c-bar ${isToday ? "today" : ""}" style="height:${pct}%"></div>
+          <div class="c-label">${label}</div>
+        </div>`;
+    }).join("");
+  }
+
+  // ─── LEADS ────────────────────────────────────────────
+  async function loadLeads() {
+    const params = currentFilter ? `?status=${currentFilter}` : "";
+    try {
+      const res = await apiFetch(`/api/leads${params}`);
+      const data = await res.json();
+      allLeads = data.items || [];
+      renderLeads(allLeads);
+    } catch {
+      document.getElementById("leads-tbody").innerHTML =
+        '<tr><td colspan="7" class="empty">Error al cargar leads</td></tr>';
+    }
+  }
+
+  function renderLeads(leads) {
+    const tbody = document.getElementById("leads-tbody");
+    if (!leads.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">📭</div>No hay leads con este filtro</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = leads.map(l => `
+      <tr>
+        <td>
+          <div class="lead-name">${esc(l.name)}</div>
+          <div class="lead-email">${esc(l.email)}</div>
+        </td>
+        <td>${esc(l.phone || "—")}</td>
+        <td>${esc(l.company || "—")}</td>
+        <td><span style="font-size:.75rem;color:var(--muted)">${l.source}</span></td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="color:var(--muted);font-size:.78rem">${formatDate(l.created_at)}</td>
+        <td><button class="btn-sm" onclick="openModal(${l.id})">Ver →</button></td>
+      </tr>
+    `).join("");
+  }
+
+  function setFilter(status, btn) {
+    currentFilter = status;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("search-input").value = "";
+    loadLeads();
+  }
+
+  function filterLeads() {
+    const q = document.getElementById("search-input").value.toLowerCase();
+    const filtered = allLeads.filter(l =>
+      l.name.toLowerCase().includes(q) ||
+      l.email.toLowerCase().includes(q) ||
+      (l.company || "").toLowerCase().includes(q)
+    );
+    renderLeads(filtered);
+  }
+
+  // ─── MODAL ────────────────────────────────────────────
+  function openModal(id) {
+    const l = allLeads.find(x => x.id === id);
+    if (!l) return;
+    currentLeadId = id;
+    document.getElementById("modal-name").textContent = l.name;
+    document.getElementById("modal-email").textContent = l.email;
+    document.getElementById("modal-phone").textContent = l.phone || "—";
+    document.getElementById("modal-company").textContent = l.company || "—";
+    document.getElementById("modal-source").textContent = l.source;
+    document.getElementById("modal-message").textContent = l.message || "Sin mensaje";
+    document.getElementById("modal-status").value = l.status;
+    document.getElementById("modal-notes").value = l.notes || "";
+    document.getElementById("modal-overlay").classList.add("open");
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById("modal-overlay"))
+      document.getElementById("modal-overlay").classList.remove("open");
+  }
+
+  async function saveLead() {
+    const status = document.getElementById("modal-status").value;
+    const notes  = document.getElementById("modal-notes").value;
+    try {
+      await apiFetch(`/api/leads/${currentLeadId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, notes }),
+      });
+      document.getElementById("modal-overlay").classList.remove("open");
+      showToast("Lead actualizado ✓");
+      loadLeads();
+      loadDashboard();
+    } catch {
+      showToast("Error al guardar", true);
+    }
+  }
+
+  // ─── HELPERS ──────────────────────────────────────────
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(`${API}${path}`, {
+      ...opts,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 401) { logout(); throw new Error("Unauthorized"); }
+    return res;
+  }
+
+  function statusBadge(s) {
+    const map = {
+      new:       ["badge-new",       "🔵 Nuevo"],
+      contacted: ["badge-contacted", "🟣 Contactado"],
+      qualified: ["badge-qualified", "🟡 Calificado"],
+      closed:    ["badge-closed",    "🟢 Cerrado"],
+      lost:      ["badge-lost",      "🔴 Perdido"],
+    };
+    const [cls, label] = map[s] || ["badge-new", s];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+      + " · " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function showToast(msg, isErr = false) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = isErr ? "err" : "";
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+  }
+</script>
+</body>
+</html>
