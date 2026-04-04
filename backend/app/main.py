@@ -13,36 +13,46 @@ from app.middleware.security import SecurityHeadersMiddleware
 from app.utils.rate_limit import limiter
 from app.api import leads, stats, auth
 
+# 🔥 Logging
 setup_logging()
 logger = get_logger(__name__)
 
 
+# 🚀 LIFESPAN (inicio y cierre de la app)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("NexaroAI API arrancando — env=%s", settings.ENVIRONMENT)
+
+    # 🔥 CREAR TABLAS AUTOMÁTICAMENTE
     Base.metadata.create_all(bind=engine)
     logger.info("Base de datos lista")
+
     yield
+
     logger.info("NexaroAI API apagándose")
 
 
+# 🚀 APP PRINCIPAL (CORREGIDO)
 app = FastAPI(
     title="NexaroAI API",
     version="1.0.0",
-    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
+    docs_url="/docs",                 # ✅ ACTIVADO SIEMPRE
     redoc_url=None,
-    openapi_url="/openapi.json" if settings.ENVIRONMENT == "development" else None,
+    openapi_url="/openapi.json",      # ✅ ACTIVADO SIEMPRE
     lifespan=lifespan,
 )
 
-# Rate limiting global
+
+# 🔒 RATE LIMIT GLOBAL
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Security headers en todas las respuestas
+
+# 🔐 SECURITY HEADERS
 app.add_middleware(SecurityHeadersMiddleware)
 
-# CORS restringido
+
+# 🌐 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -52,14 +62,16 @@ app.add_middleware(
     max_age=600,
 )
 
+
+# 📡 ROUTERS
 app.include_router(leads.router, prefix="/api", tags=["leads"])
 app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(auth.router, prefix="/api", tags=["auth"])
 
 
+# 💣 ERROR HANDLER GLOBAL
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    # Log completo internamente, nunca exponer al cliente
     logger.error("Error no controlado: %s | path=%s", str(exc), request.url.path)
     return JSONResponse(
         status_code=500,
@@ -67,6 +79,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ❤️ HEALTH CHECK (IMPORTANTE PARA RENDER)
 @app.get("/health", tags=["system"])
 def health():
-    return {"status": "ok", "service": "NexaroAI API", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "service": "NexaroAI API",
+        "version": "1.0.0"
+    }
