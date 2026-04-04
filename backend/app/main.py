@@ -1,89 +1,11 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from fastapi import FastAPI
 
-from app.core.config import settings
-from app.core.logging import setup_logging, get_logger
-from app.db.base import Base
-from app.db.session import engine
-from app.middleware.security import SecurityHeadersMiddleware
-from app.utils.rate_limit import limiter
-from app.api import leads, stats, auth
+app = FastAPI()
 
-# 🔥 Logging
-setup_logging()
-logger = get_logger(__name__)
+@app.get("/")
+def root():
+    return {"message": "API running"}
 
-
-# 🚀 LIFESPAN (inicio y cierre de la app)
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("NexaroAI API arrancando — env=%s", settings.ENVIRONMENT)
-
-    # 🔥 CREAR TABLAS AUTOMÁTICAMENTE
-    Base.metadata.create_all(bind=engine)
-    logger.info("Base de datos lista")
-
-    yield
-
-    logger.info("NexaroAI API apagándose")
-
-
-# 🚀 APP PRINCIPAL (CORREGIDO)
-app = FastAPI(
-    title="NexaroAI API",
-    version="1.0.0",
-    docs_url="/docs",                 # ✅ ACTIVADO SIEMPRE
-    redoc_url=None,
-    openapi_url="/openapi.json",      # ✅ ACTIVADO SIEMPRE
-    lifespan=lifespan,
-)
-
-
-# 🔒 RATE LIMIT GLOBAL
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-
-# 🔐 SECURITY HEADERS
-app.add_middleware(SecurityHeadersMiddleware)
-
-
-# 🌐 CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Authorization", "Content-Type"],
-    max_age=600,
-)
-
-
-# 📡 ROUTERS
-app.include_router(leads.router, prefix="/api", tags=["leads"])
-app.include_router(stats.router, prefix="/api", tags=["stats"])
-app.include_router(auth.router, prefix="/api", tags=["auth"])
-
-
-# 💣 ERROR HANDLER GLOBAL
-@app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
-    logger.error("Error no controlado: %s | path=%s", str(exc), request.url.path)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Error interno. Inténtalo de nuevo más tarde."},
-    )
-
-
-# ❤️ HEALTH CHECK (IMPORTANTE PARA RENDER)
-@app.get("/health", tags=["system"])
+@app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "service": "NexaroAI API",
-        "version": "1.0.0"
-    }
+    return {"status": "ok", "service": "NexaroAI API"}
