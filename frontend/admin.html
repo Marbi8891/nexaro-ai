@@ -423,7 +423,12 @@
 <script>
   // ─── CONFIG ───────────────────────────────────────────
   // Cambia esta URL cuando despliegues el backend en Render/Railway
-  const API = "https://TU-BACKEND.onrender.com";
+  /* ── BACKEND URL — detección automática de entorno ─────────── */
+  // En producción: sustituir la URL de Render en PROD_URL (única línea a tocar)
+  const PROD_URL = "https://TU-BACKEND.onrender.com"; // ← cambiar antes del deploy
+  const API = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:8000"
+    : PROD_URL;
 
   let token = localStorage.getItem("nexaro_token") || "";
   let allLeads = [];

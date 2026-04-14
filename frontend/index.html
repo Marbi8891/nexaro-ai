@@ -1652,8 +1652,12 @@
     }
   }, 4000);
 
-  /* ── BACKEND URL — cambia cuando despliegues en Render ──────── */
-  const BACKEND_URL = 'https://TU-BACKEND.onrender.com';
+  /* ── BACKEND URL — detección automática de entorno ─────────── */
+  // En producción: sustituir la URL de Render en PROD_URL (única línea a tocar)
+  const PROD_URL = "https://TU-BACKEND.onrender.com"; // ← cambiar antes del deploy
+  const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:8000"
+    : PROD_URL;
 
   /* ── Form validation & submission ────────────────── */
   const form = document.getElementById('contactForm');

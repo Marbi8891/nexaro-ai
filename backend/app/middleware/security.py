@@ -17,6 +17,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         response.headers["Cache-Control"] = "no-store"
-        # Eliminar cabecera que revela el stack
-        response.headers.pop("server", None)
+        # MutableHeaders de Starlette no tiene .pop() — usar del con guard
+        try:
+            del response.headers["server"]
+        except KeyError:
+            pass
         return response

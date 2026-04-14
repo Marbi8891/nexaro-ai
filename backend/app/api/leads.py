@@ -41,8 +41,8 @@ def create_lead(
     clean_data = sanitize_lead(payload.model_dump())
 
     # 4. Deduplicar
-    from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    from datetime import datetime, timedelta, timezone
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
     if db.query(Lead).filter(Lead.email == payload.email, Lead.created_at >= cutoff).first():
         logger.info("Lead duplicado | email=%s", payload.email)
         raise HTTPException(status_code=409, detail="Ya hemos recibido tu solicitud. Te contactaremos pronto.")
@@ -106,6 +106,9 @@ def update_lead(request: Request, lead_id: int, payload: LeadUpdate, db: Session
         lead.status = payload.status
     if payload.notes is not None:
         lead.notes = sanitize_text(payload.notes, max_length=1000)
+    # Forzar updated_at — onupdate del ORM no garantiza UPDATE en todos los drivers
+    from datetime import datetime, timezone
+    lead.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     db.refresh(lead)
     logger.info("Lead actualizado | id=%d | status=%s", lead.id, lead.status)

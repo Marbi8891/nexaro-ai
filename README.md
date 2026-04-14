@@ -1,165 +1,199 @@
 # NexaroAI Agency
 
-> Sistema completo de captación y conversión de leads con IA para agencias de automatización.
-
-[![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)](https://postgresql.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+Sistema de captación y conversión de leads para agencia de IA.  
+Landing pública + backend FastAPI + panel CRM admin.
 
 ---
 
-## ¿Qué es esto?
-
-Sistema full-stack listo para producción que incluye:
-
-- **Landing page** de alta conversión (HTML/CSS/JS, sin dependencias)
-- **API REST** con FastAPI — gestión completa de leads
-- **Panel CRM** admin con login JWT y gestión de estados
-- **Automatización** de email/WhatsApp al recibir un lead
-- **Seguridad real**: rate limiting, honeypot, sanitización, security headers
-
----
-
-## Stack
-
-| Capa | Tecnología |
-|---|---|
-| Frontend | HTML · CSS · JavaScript vanilla |
-| Backend | Python 3.11 · FastAPI · SQLAlchemy · Pydantic |
-| Base de datos | PostgreSQL 16 |
-| Seguridad | JWT · slowapi · honeypot · hmac timing-safe |
-| Despliegue | Hostinger (frontend) · Render (backend) · Neon (DB) |
-
----
-
-## Estructura
+## Arquitectura real
 
 ```
 nexaro-ai/
 ├── frontend/
-│   ├── index.html          ← Landing page conectada a la API
-│   └── admin.html          ← Panel CRM con login JWT
+│   ├── index.html          # Landing pública con formulario de captación
+│   └── admin.html          # Panel CRM (login, dashboard, tabla, modal)
+│
 ├── backend/
 │   ├── app/
-│   │   ├── main.py         ← FastAPI app + middlewares + CORS
-│   │   ├── api/            ← leads.py · stats.py · auth.py
-│   │   ├── core/           ← config · security · logging
-│   │   ├── db/             ← session · base
-│   │   ├── middleware/     ← security headers
-│   │   ├── models/         ← Lead (SQLAlchemy)
-│   │   ├── schemas/        ← Pydantic con validación estricta
-│   │   ├── services/       ← email · whatsapp · calendar
-│   │   └── utils/          ← rate_limit · sanitize
-│   ├── alembic/            ← Migraciones de BD
+│   │   ├── main.py         # FastAPI: routers, CORS, middlewares, lifespan
+│   │   ├── api/
+│   │   │   ├── auth.py     # POST /api/auth/login
+│   │   │   ├── leads.py    # CRUD leads (público + privado)
+│   │   │   └── stats.py    # GET /api/stats (privado)
+│   │   ├── core/
+│   │   │   ├── config.py   # pydantic-settings, variables de entorno
+│   │   │   ├── security.py # JWT + require_admin dependency
+│   │   │   └── logging.py  # Logging estructurado
+│   │   ├── db/
+│   │   │   ├── base.py     # DeclarativeBase
+│   │   │   └── session.py  # Engine + get_db (compatible PG y SQLite)
+│   │   ├── middleware/
+│   │   │   └── security.py # Security headers
+│   │   ├── models/
+│   │   │   └── lead.py     # ORM Lead con enums LeadStatus / LeadSource
+│   │   ├── schemas/
+│   │   │   └── lead.py     # LeadCreate, LeadUpdate, LeadOut, LeadListOut
+│   │   ├── services/
+│   │   │   ├── email_service.py     # SMTP real o mock (EMAIL_MOCK=true)
+│   │   │   ├── whatsapp_service.py  # Placeholder Twilio
+│   │   │   └── calendar_service.py  # Placeholder Google Calendar
+│   │   └── utils/
+│   │       ├── rate_limit.py  # slowapi (desactivado en TESTING=true)
+│   │       └── sanitize.py    # Sanitización HTML + detección inyección SQL
+│   ├── alembic/versions/
+│   │   ├── 0001_create_leads_table.py
+│   │   └── 0002_updated_at_trigger.py
+│   ├── tests/
+│   │   ├── conftest.py     # SQLite en memoria, rollback por test
+│   │   ├── test_health.py
+│   │   ├── test_auth.py
+│   │   ├── test_leads.py
+│   │   └── test_stats.py
+│   ├── requirements.txt
 │   ├── Dockerfile
 │   ├── Procfile
-│   ├── requirements.txt
 │   └── .env.example
-├── docker-compose.yml
-├── .gitignore
-└── README.md
-```
-
----
-
-## Instalación local
-
-### Con Docker (recomendado)
-
-```bash
-git clone https://github.com/TU_USUARIO/nexaro-ai.git
-cd nexaro-ai
-
-cp backend/.env.example backend/.env
-
-docker-compose up --build
-```
-
-- API → `http://localhost:8000`
-- Docs → `http://localhost:8000/docs`
-- Frontend → abre `frontend/index.html` en el navegador
-
-### Sin Docker
-
-```bash
-# Requiere PostgreSQL corriendo localmente
-createdb nexaroai
-
-cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env            # edita con tus valores
-
-alembic upgrade head            # crea las tablas
-uvicorn app.main:app --reload --port 8000
+│
+└── docker-compose.yml
 ```
 
 ---
 
 ## Endpoints
 
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| GET | `/health` | ❌ | Estado del servicio |
-| POST | `/api/leads` | ❌ | Crear lead (formulario web) |
-| GET | `/api/leads` | ✅ JWT | Listar leads con filtros |
-| GET | `/api/leads/{id}` | ✅ JWT | Detalle de lead |
-| PATCH | `/api/leads/{id}` | ✅ JWT | Actualizar estado/notas |
-| GET | `/api/stats` | ✅ JWT | KPIs del dashboard |
-| POST | `/api/auth/login` | ❌ | Login admin → JWT |
+### Públicos
 
----
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/health` | Estado de la API |
+| `POST` | `/api/leads` | Crear lead desde landing |
+| `POST` | `/api/auth/login` | Login admin — devuelve JWT |
 
-## Seguridad
+### Privados (`Authorization: Bearer <token>`)
 
-- Rate limiting por IP (slowapi): 5/min en leads, 10/min en login
-- Honeypot anti-bot en formulario (frontend + backend)
-- Sanitización de inputs y detección de patrones de inyección
-- Login con `hmac.compare_digest` (timing-safe)
-- Security headers en todas las respuestas
-- Docs API desactivadas en producción
-- Proceso Docker corre como usuario no-root
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/leads` | Listar leads (filtro status, búsqueda, paginación) |
+| `GET` | `/api/leads/{id}` | Detalle de un lead |
+| `PATCH` | `/api/leads/{id}` | Actualizar status y notas |
+| `GET` | `/api/stats` | Total, by_status, by_source, daily_7d, conversion_rate |
 
----
+### POST /api/leads — payload
 
-## Despliegue
-
-### 1. Base de datos — Neon (gratis)
-1. Crea cuenta en [neon.tech](https://neon.tech)
-2. New Project → copia la `DATABASE_URL`
-
-### 2. Backend — Render
-1. New Web Service → conecta este repo
-2. Root Directory: `backend`
-3. Build: `pip install -r requirements.txt && alembic upgrade head`
-4. Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Añade las variables de entorno del `.env.example`
-
-### 3. Frontend — Hostinger
-1. Edita `frontend/admin.html` → cambia `const API = "https://TU-BACKEND.onrender.com"`
-2. Sube `index.html` y `admin.html` a `public_html/`
-
----
-
-## Variables de entorno necesarias en Render
-
-```env
-ENVIRONMENT=production
-DATABASE_URL=postgresql://...neon.tech/nexaroai?sslmode=require
-SECRET_KEY=<openssl rand -hex 32>
-CORS_ORIGINS=["https://nexaroai.agency"]
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=<password seguro>
-EMAIL_MOCK=false
-SMTP_USER=tu@gmail.com
-SMTP_PASSWORD=<app password Gmail>
+```json
+{
+  "name": "María García",
+  "email": "maria@empresa.com",
+  "phone": "612345678",
+  "company": "Clínica Dental",
+  "message": "Quiero automatizar la captación de pacientes",
+  "source": "web"
+}
 ```
+
+`source` acepta: `web` `instagram` `google` `referral` `whatsapp` `other`
+
+---
+
+## Instalación local
+
+```bash
+git clone https://github.com/Marbi8891/nexaro-ai.git
+cd nexaro-ai/backend
+
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env   # editar SECRET_KEY, ADMIN_PASSWORD, DATABASE_URL
+```
+
+Levantar PostgreSQL:
+
+```bash
+cd ..   # raíz del proyecto
+docker-compose up -d db
+```
+
+Migraciones y arranque:
+
+```bash
+cd backend
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+Swagger disponible en `http://localhost:8000/docs` (solo `ENVIRONMENT=development`).
+
+Frontend — abrir directamente o servir:
+
+```bash
+cd ../frontend
+python -m http.server 8080
+# Panel admin: http://localhost:8080/admin.html
+```
+
+---
+
+## Variables de entorno
+
+| Variable | Descripción |
+|----------|-------------|
+| `ENVIRONMENT` | `development` o `production` |
+| `SECRET_KEY` | Clave JWT — generar con `openssl rand -hex 32` |
+| `DATABASE_URL` | URL PostgreSQL |
+| `ADMIN_USERNAME` | Usuario del panel admin |
+| `ADMIN_PASSWORD` | Contraseña del panel admin |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración JWT (default 480 = 8h) |
+| `CORS_ORIGINS` | Array JSON de orígenes permitidos |
+| `EMAIL_MOCK` | `true` = solo logs, no envía email real |
+| `SMTP_HOST/PORT/USER/PASSWORD` | Configuración SMTP para email real |
+
+---
+
+## Tests
+
+```bash
+cd backend
+TESTING=true python -m pytest tests/ -v
+```
+
+41 tests. Sin PostgreSQL — usa SQLite en memoria con rollback por test.
+
+---
+
+## Despliegue: Render (backend) + Hostinger (frontend)
+
+**Backend en Render:**
+1. Web Service → directorio `backend`
+2. Build: `pip install -r requirements.txt && alembic upgrade head`
+3. Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Añadir PostgreSQL de Render → copiar `DATABASE_URL` a env vars
+5. Añadir el resto de variables de `.env.example`
+
+**Frontend en Hostinger:**
+1. En `frontend/index.html` y `frontend/admin.html`, cambiar `http://localhost:8000` por la URL de Render
+2. Subir ambos HTML a `public_html`
+
+---
+
+## Estado del MVP
+
+| Funcionalidad | Estado |
+|---------------|--------|
+| Landing + formulario captación | ✅ |
+| Backend FastAPI con todos los endpoints | ✅ |
+| Login JWT + panel CRM | ✅ |
+| Honeypot, sanitización, deduplicación 24h | ✅ |
+| Rate limiting, security headers | ✅ |
+| Emails (mock activado, SMTP listo) | ✅ |
+| Migraciones Alembic + trigger updated_at | ✅ |
+| 41 tests pasando | ✅ |
+| SMTP real configurado | 🔲 configurable en .env |
+| WhatsApp Twilio activado | 🔲 placeholder listo |
+| Google Calendar activado | 🔲 placeholder listo |
 
 ---
 
 ## Licencia
 
-MIT — NexaroAI Agency © 2025
+MIT

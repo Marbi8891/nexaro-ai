@@ -1,16 +1,25 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
+from datetime import datetime, timedelta, timezone
 
 from app.db.session import get_db
 from app.models.lead import Lead, LeadStatus
 from app.core.security import require_admin
+from app.utils.rate_limit import limiter
+from app.core.config import settings
 
 router = APIRouter()
 
 
+def _is_sqlite(db: Session) -> bool:
+    return db.bind.dialect.name == "sqlite"
+
+
 @router.get("/stats")
+@limiter.limit("60/minute")
 def get_stats(
+    request: Request,
     db: Session = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
@@ -29,21 +38,34 @@ def get_stats(
         .all()
     )
 
-    # Leads de los últimos 7 días por día
-    from sqlalchemy import cast, Date, text
-    from datetime import datetime, timedelta
+    # Leads últimos 7 días — query compatible con SQLite y PostgreSQL
+    seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
 
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    daily = (
-        db.query(
-            cast(Lead.created_at, Date).label("day"),
-            func.count(Lead.id).label("count"),
+    if _is_sqlite(db):
+        # SQLite: usar strftime para truncar a fecha
+        daily = (
+            db.query(
+                func.strftime("%Y-%m-%d", Lead.created_at).label("day"),
+                func.count(Lead.id).label("count"),
+            )
+            .filter(Lead.created_at >= seven_days_ago)
+            .group_by(text("day"))
+            .order_by(text("day"))
+            .all()
         )
-        .filter(Lead.created_at >= seven_days_ago)
-        .group_by("day")
-        .order_by("day")
-        .all()
-    )
+    else:
+        # PostgreSQL: usar DATE_TRUNC para truncar a día
+        from sqlalchemy import cast, Date
+        daily = (
+            db.query(
+                cast(Lead.created_at, Date).label("day"),
+                func.count(Lead.id).label("count"),
+            )
+            .filter(Lead.created_at >= seven_days_ago)
+            .group_by(text("day"))
+            .order_by(text("day"))
+            .all()
+        )
 
     conversion_rate = 0.0
     closed = next((c for s, c in by_status if s == LeadStatus.closed), 0)
