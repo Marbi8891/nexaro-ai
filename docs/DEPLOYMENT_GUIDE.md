@@ -120,7 +120,7 @@ Panel del servicio → **Environment** → Add environment variable:
 | Variable | Valor |
 |---|---|
 | `ENVIRONMENT` | `production` |
-| `DATABASE_URL` | Internal URL de la DB de Render (reemplaza `postgres://` por `postgresql+asyncpg://`) |
+| `DATABASE_URL` | Internal URL de la DB de Render (`postgres://` se normaliza automáticamente) |
 | `SECRET_KEY` | `openssl rand -hex 32` → pegar el resultado |
 | `ADMIN_USERNAME` | Tu usuario admin |
 | `ADMIN_PASSWORD` | Contraseña segura (mín. 12 chars) |
@@ -128,7 +128,7 @@ Panel del servicio → **Environment** → Add environment variable:
 | `CORS_ORIGINS` | `["https://mrabehfathi.com", "https://www.mrabehfathi.com"]` |
 | `EMAIL_MOCK` | `true` (hasta configurar SMTP) |
 
-> ⚠️ **Importante:** Render provee URLs con prefijo `postgres://`. Debes reemplazarlo por `postgresql+asyncpg://` para que funcione con SQLAlchemy async.
+> ⚠️ **Importante:** Render provee URLs con prefijo `postgres://`; el backend las normaliza a `postgresql://` (SQLAlchemy síncrono con psycopg2).
 
 ### Paso 4: Deploy
 
@@ -208,7 +208,7 @@ alembic history --verbose
 ## Troubleshooting
 
 ### `sqlalchemy.exc.OperationalError: could not connect to server`
-- Verifica que `DATABASE_URL` usa `postgresql+asyncpg://` (no `postgres://`)
+- Verifica que `DATABASE_URL` apunta a la base de datos de Render
 - En local: ¿está corriendo el contenedor de PostgreSQL? → `docker-compose up -d db`
 
 ### `ValueError: SECRET_KEY insegura en producción`
@@ -253,7 +253,7 @@ ADMIN_USERNAME=                # Usuario del panel CRM
 ADMIN_PASSWORD=                # Mín 12 chars en producción
 
 # ─── Base de datos ────────────────────────────────
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
 
 # ─── JWT ──────────────────────────────────────────
 ACCESS_TOKEN_EXPIRE_MINUTES=480   # 8h por defecto
