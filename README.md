@@ -333,7 +333,7 @@ ENVIRONMENT=development        # development | production
 SECRET_KEY=                    # Obligatorio — openssl rand -hex 32
 
 # Base de datos
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/nexaro_dev
+DATABASE_URL=postgresql://user:password@localhost:5432/nexaro_dev
 
 # Admin
 ADMIN_USERNAME=                # Obligatorio

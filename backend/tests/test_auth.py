@@ -48,3 +48,18 @@ def test_acceso_privado_token_invalido(client):
 def test_acceso_privado_token_malformado(client):
     res = client.get("/api/leads", headers={"Authorization": "Basic admin:pass"})
     assert res.status_code == 401
+
+
+def test_registro_publico_no_existe(client):
+    # Regresión: el router legacy exponía /auth/register sin autenticación
+    for path in ["/auth/register", "/api/auth/register"]:
+        res = client.post(path, json={"email": "x@ejemplo.com", "password": "x"})
+        assert res.status_code in (404, 405)
+
+
+def test_token_firmado_con_clave_legacy_rechazado(client):
+    # Regresión: la clave "supersecret" estuvo escrita en el código público
+    import jwt
+    token = jwt.encode({"sub": "admin", "role": "admin"}, "supersecret", algorithm="HS256")
+    res = client.get("/api/leads", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 401
